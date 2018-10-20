@@ -122,7 +122,7 @@ const program = new commander.Command(packageJson.name)
   })
   .parse(process.argv);
 
-if (program.info) {
+if (program.info) { 
   console.log(chalk.bold('\nEnvironment Info:'));
   return envinfo
     .run(
@@ -193,16 +193,16 @@ createApp(
  * @param {*} template 指定初始化模板, 开发使用
  */
 function createApp(name, verbose, version, useNpm, usePnp, template) {
-  // 获取当前目录路径
+  // 获取项目目录的绝对路径
   const root = path.resolve(name);
-  // 获取当前目录名
+  // 获取项目目录名
   const appName = path.basename(root);
 
   // 检查文件名是否合法
   checkAppName(appName);
-  // 确定目录存在
+  // fs-extra 确定项目目录存在, 如果不存在则创建
   fs.ensureDirSync(name);
-  // 不合法结束进程
+  // 检查项目目录是否合法, 不合法结束进程
   if (!isSafeToCreateProjectIn(root, name)) {
     process.exit(1);
   }
@@ -222,13 +222,13 @@ function createApp(name, verbose, version, useNpm, usePnp, template) {
     JSON.stringify(packageJson, null, 2) + os.EOL
   );
 
-  // 如果指定使用 npm 则 useYarn 等于 false, 否则指定 shouldUseYarn 检查是否安装了 yarn
+  // 如果指定使用 npm 则 useYarn 等于 false, 否则 shouldUseYarn 检查是否安装了 yarn
   const useYarn = useNpm ? false : shouldUseYarn();
   // 保存当前工作目录, 此时工作目录是 <name> 的父级
   const originalDirectory = process.cwd();
   // 将工作目录修改为 <name>
   process.chdir(root);
-  // 使用 npm 时需要检查 npm 是否能读取当前目录 ??
+  // 使用 npm 时需要检查 npm 是在正确的目录中运行
   if (!useYarn && !checkThatNpmCanReadCwd()) {
     process.exit(1);
   }
@@ -246,7 +246,7 @@ function createApp(name, verbose, version, useNpm, usePnp, template) {
     // Fall back to latest supported react-scripts on Node 4
     version = 'react-scripts@0.9.x';
   }
-  // 检查 npm 版本
+  // 检查 npm 版本, 如果 node 版本太低则降低 react-scripts 版本
   if (!useYarn) {
     const npmInfo = checkNpmVersion();
     if (!npmInfo.hasMinNpm) {
@@ -372,6 +372,17 @@ function install(root, useYarn, usePnp, dependencies, verbose, isOnline) {
   });
 }
 
+
+/**
+ * @param {*} root 项目目录露脚踝
+ * @param {*} appName 项目目录名
+ * @param {*} version 指定 react-scripts 的版本
+ * @param {*} verbose 打印本地信息
+ * @param {*} originalDirectory 项目目录所在目录
+ * @param {*} template
+ * @param {*} useYarn
+ * @param {*} usePnp
+ */
 function run(
   root,
   appName,
@@ -382,10 +393,12 @@ function run(
   useYarn,
   usePnp
 ) {
+  // 获取 react-scripts 版本
   const packageToInstall = getInstallPackage(version, originalDirectory);
   const allDependencies = ['react', 'react-dom', packageToInstall];
 
   console.log('Installing packages. This might take a couple of minutes.');
+  // 获取包的原始名称
   getPackageName(packageToInstall)
     .then(packageName =>
       checkIfOnline(useYarn).then(isOnline => ({
@@ -403,6 +416,7 @@ function run(
       );
       console.log();
 
+      // 安装依赖
       return install(
         root,
         useYarn,
@@ -420,6 +434,7 @@ function run(
 
       const nodeArgs = fs.existsSync(pnpPath) ? ['--require', pnpPath] : [];
 
+      // 执行 react-scripts init.js
       await executeNodeScript(
         {
           cwd: process.cwd(),
@@ -815,7 +830,9 @@ function getProxy() {
     }
   }
 }
+// 检查当前目录是否与 npm config list 中的 cwd 相同
 function checkThatNpmCanReadCwd() {
+  // 当前目录
   const cwd = process.cwd();
   let childOutput = null;
   try {
@@ -824,6 +841,7 @@ function checkThatNpmCanReadCwd() {
     // `npm config list` is the only reliable way I could find
     // to reproduce the wrong path. Just printing process.cwd()
     // in a Node process was not enough.
+    // 执行 npm config list 并保存输出
     childOutput = spawn.sync('npm', ['config', 'list']).output.join('');
   } catch (err) {
     // Something went wrong spawning node.
